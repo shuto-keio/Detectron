@@ -15,21 +15,47 @@ import numpy as np
 
 def get_resolution(filename):
     command = ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
-               '-show_entries', 'stream=width,height', '-of', 'csv=p=0', filename]
+               '-show_entries', 'stream=width,height', '-of', 'csv=p=0', filename]   
     pipe = sp.Popen(command, stdout=sp.PIPE, bufsize=-1)
     for line in pipe.stdout:
         w, h = line.decode().strip().split(',')
         return int(w), int(h)
 
 def read_video(filename):
-    w, h = get_resolution(filename)
+    
+    if os.path.isdir(filename):
+        pic_name = glob.glob(os.path.join(filename, "*"))
+        pic_name.sort()
 
-    command = ['ffmpeg',
-            '-i', filename,
-            '-f', 'image2pipe',
-            '-pix_fmt', 'bgr24',
-            '-vsync', '0',
-            '-vcodec', 'rawvideo', '-']
+        w, h = get_resolution(pic_name[0])
+        file_path = os.path.dirname(pic_name[0])
+        name, ext = os.path.splitext(os.path.basename(pic_name[0]))
+        degit_num = len(name)
+        start_frame = str(int(name))
+
+        command = ['ffmpeg',
+                '-probesize', '100M',
+                '-analyzeduration', '100M',
+                '-start_number', start_frame,
+                '-i', '{}/%0{}d{}'.format(file_path, degit_num, ext),
+                '-f', 'image2pipe',
+                '-pix_fmt', 'bgr24',
+                '-vsync', '0',
+                '-vcodec', 'rawvideo', '-']
+#        print(command)
+
+        
+    else:
+        w, h = get_resolution(filename)
+
+        command = ['ffmpeg',
+                '-probesize', '100M',
+                '-analyzeduration', '100M',
+                '-i', filename,
+                '-f', 'image2pipe',
+                '-pix_fmt', 'bgr24',
+                '-vsync', '0',
+                '-vcodec', 'rawvideo', '-']
 
     pipe = sp.Popen(command, stdout=sp.PIPE, bufsize=-1)
     while True:
@@ -50,9 +76,8 @@ def main(args):
     dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
 
-
     if os.path.isdir(args.im_or_folder):
-        im_list = glob.iglob(args.im_or_folder + '/*.' + args.image_ext)
+        im_list = glob.iglob(args.im_or_folder + '/*')
     else:
         im_list = [args.im_or_folder]
 
